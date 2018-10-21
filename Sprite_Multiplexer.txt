@@ -1,32 +1,33 @@
-;ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
-;³Spritemultiplexing example V2.1                                              ³
-;³by Lasse ™”rni (loorni@student.oulu.fi)                                      ³
-;³Available at http//covertbitops.cjb.net                                     ³
-;³                                                                             ³
-;³Quite easy (?) to understand example how to make a spritemultiplexer,        ³
-;³using 32 sprites. The routine is capable of more but the screen starts       ³
-;³to become very crowded, as they move randomly...                             ³
-;³                                                                             ³
-;³Uses a "new" more optimal sortmethod that doesn't take as much time          ³
-;³as bubblesort. This method is based on the idea of an orderlist that         ³
-;³is not recreated from scratch each frame; but instead modified every         ³
-;³frame to create correct top-bottom order of sprites.                         ³
-;³                                                                             ³
-;³Why sorted top-bottom order of sprites is necessary for multiplexing        ³
-;³because raster interrupts are used to "rewrite" the sprite registers         ³
-;³in the middle of the screen and raster interrupts follow the                 ³
-;³top->bottom movement of the TV/monitor electron gun as it draws each         ³
-;³frame.                                                                       ³
-;³                                                                             ³
-;³Light grey color in the bottom of the screen measures the time taken         ³
-;³by sprite sorting.                                                           ³
-;³                                                                             ³
-;³What is missing from this tutorial for sake of simplicity                   ³
-;³* 16-bit X coordinates (it's now multiplying the X-coord by 2)               ³
-;³* Elimination of "extra" (more than 8) sprites on a row                      ³
-;³                                                                             ³
-;³This source code is in DASM format.                                          ³
-;ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+;ÃšÃ„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Â¿
+;Â³Spritemultiplexing example V2.1                                              Â³
+;Â³by Lasse â„¢â€rni (loorni@student.oulu.fi)                                      Â³
+;Â³Available at http//covertbitops.cjb.net                                     Â³
+;Â³                                                                             Â³
+;Â³Quite easy (?) to understand example how to make a spritemultiplexer,        Â³
+;Â³using 32 sprites. The routine is capable of more but the screen starts       Â³
+;Â³to become very crowded, as they move randomly...                             Â³
+;Â³                                                                             Â³
+;Â³Uses a "new" more optimal sortmethod that doesn't take as much time          Â³
+;Â³as bubblesort. This method is based on the idea of an orderlist that         Â³
+;Â³is not recreated from scratch each frame; but instead modified every         Â³
+;Â³frame to create correct top-bottom order of sprites.                         Â³
+;Â³                                                                             Â³
+;Â³Why sorted top-bottom order of sprites is necessary for multiplexing        Â³
+;Â³because raster interrupts are used to "rewrite" the sprite registers         Â³
+;Â³in the middle of the screen and raster interrupts follow the                 Â³
+;Â³top->bottom movement of the TV/monitor electron gun as it draws each         Â³
+;Â³frame.                                                                       Â³
+;Â³                                                                             Â³
+;Â³Light grey color in the bottom of the screen measures the time taken         Â³
+;Â³by sprite sorting.                                                           Â³
+;Â³                                                                             Â³
+;Â³What is missing from this tutorial for sake of simplicity                   Â³
+;Â³* 16-bit X coordinates (it's now multiplying the X-coord by 2)               Â³
+;Â³* Elimination of "extra" (more than 8) sprites on a row                      Â³
+;Â³                                                                             Â³
+;Â³This source code is in DASM format.     
+;Â³Formatted to run in the CBM prgStudio IDE -> MARVIN HARDY 2018
+;Ã€Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã„Ã™
 
 
 
@@ -176,7 +177,7 @@ irq1           dec $d019                       ;Acknowledge raster interrupt
                 sta sprupdateflag
                 lda numsprites                  ;Take number of sprites given
                                                 ;by the main program
-                sta sortedsprites               ;If itïs zero, donït need to
+                sta sortedsprites               ;If itÃ¯s zero, donÃ¯t need to
                 bne irq1_beginsort              ;sort
 
 irq1_nonewsprites
@@ -257,7 +258,7 @@ irq2_direct    ldy sprirqcounter               ;Take next sorted sprite number
                 clc
                 adc #$10                        ;16 lines down from there is
                 bcc irq2_notover                ;the endpoint for this IRQ
-                lda #$ff                        ;Endpoint canït be more than $ff
+                lda #$ff                        ;Endpoint canÃ¯t be more than $ff
 irq2_notover   sta tempvariable
 irq2_spriteloop lda sortspry,y
                 cmp tempvariable                ;End of this IRQ?
