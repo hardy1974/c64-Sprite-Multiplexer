@@ -1,33 +1,21 @@
-;ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
-;³Spritemultiplexing example V2.1                                              ³
-;³by Lasse ™”rni (loorni@student.oulu.fi)                                      ³
-;³Available at http//covertbitops.cjb.net                                     ³
-;³                                                                             ³
-;³Quite easy (?) to understand example how to make a spritemultiplexer,        ³
-;³using 32 sprites. The routine is capable of more but the screen starts       ³
-;³to become very crowded, as they move randomly...                             ³
-;³                                                                             ³
-;³Uses a "new" more optimal sortmethod that doesn't take as much time          ³
-;³as bubblesort. This method is based on the idea of an orderlist that         ³
-;³is not recreated from scratch each frame; but instead modified every         ³
-;³frame to create correct top-bottom order of sprites.                         ³
-;³                                                                             ³
-;³Why sorted top-bottom order of sprites is necessary for multiplexing        ³
-;³because raster interrupts are used to "rewrite" the sprite registers         ³
-;³in the middle of the screen and raster interrupts follow the                 ³
-;³top->bottom movement of the TV/monitor electron gun as it draws each         ³
-;³frame.                                                                       ³
-;³                                                                             ³
-;³Light grey color in the bottom of the screen measures the time taken         ³
-;³by sprite sorting.                                                           ³
-;³                                                                             ³
-;³What is missing from this tutorial for sake of simplicity                   ³
-;³* 16-bit X coordinates (it's now multiplying the X-coord by 2)               ³
-;³* Elimination of "extra" (more than 8) sprites on a row                      ³
-;³                                                                             ³
-;³This source code is in DASM format.     
-;³Formatted to run in the CBM prgStudio IDE -> MARVIN HARDY 2018
-;ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+;==============================================================================
+;Spritemultiplexing example                                              
+;All credit to Lasse Oorni (loorni@student.oulu.fi) for the original code                                                               ;                                                                             
+;This routine can run over 32 sprites (change value of 'MAXSPR', and increase 
+;the number of entries in the 'Sprite' tables to match.
+;                                                                                                      
+;First IRQ 'Sorts' the sprites at the bottom of the screen, the second IRQ
+;displays them.
+;
+;Why sorted top-bottom order of sprites is necessary for multiplexing        
+;because raster interrupts are used to "rewrite" the sprite registers         
+;in the middle of the screen and raster interrupts follow the                 
+;top->bottom movement of the TV/monitor electron gun as it draws each         
+;frame.                                                                       
+;    
+;Formatted to run in the CBM prgStudio IDE -> MARVIN HARDY 2018
+;
+;==============================================================================
 
 
 
@@ -38,7 +26,7 @@
         BYTE    $0E, $08, $0A, $00, $9E, $20, $28,  $34, $30, $39, $36, $29, $00, $00, $00
 
 *=              $0fc0
-
+;The Sprite DATA:
                  BYTE 0,0,0
                  BYTE 124,241,1
                  BYTE 253,251,1
@@ -81,15 +69,15 @@ sprirqcounter   = $06           ;Sprite counter used by the interrupt
 sortorder       = $10           ;Order-table for sorting. Needs as many bytes
 sortorderlast   = $2f           ;as there are sprites.
 
-        ;Main program
+;Main program
 
-start           jsr initsprites             ;Init the multiplexing-system
+start           jsr initsprites                 ;Init the multiplexing-system
                 jsr initraster
                 lda #00
                 sta $d020
                 sta $d021
-                jsr $e544
-                ldx #MAXSPR                 ;Use all sprites
+                jsr $e544                       ;Clear Screen
+                ldx #MAXSPR                     ;Use all sprites
                 stx numsprites
 
                 dex
@@ -126,41 +114,40 @@ moveloop        lda $e040,x                     ;Move the sprites with some
                 bpl moveloop
                 jmp mainloop                    ;Back to loop
 
-        ;Routine to init the raster interrupt system
+;Routine to init the raster interrupt system
 
 initraster     sei
                 lda #<irq1
                 sta $0314
                 lda #>irq1
                 sta $0315
-                lda #$7f                    ;CIA interrupt off
+                lda #$7f                        ;CIA interrupt off
                 sta $dc0d
-                lda #$01                    ;Raster interrupt on
+                lda #$01                        ;Raster interrupt on
                 sta $d01a
-                lda #27                     ;High bit of interrupt position = 0
+                lda #27                         ;High bit of interrupt position = 0
                 sta $d011
-                lda #IRQ1LINE               ;Line where next IRQ happens
+                lda #IRQ1LINE                   ;Line where next IRQ happens
                 sta $d012
-                lda $dc0d                   ;Acknowledge IRQ (to be sure)
+                lda $dc0d                       ;Acknowledge IRQ (to be sure)
                 cli
                 rts
-
-              
-        ;Routine to init the sprite multiplexing system
+                
+;Routine to init the sprite multiplexing system
 
 initsprites    lda #$00
                 sta sortedsprites
                 sta sprupdateflag
                 ldx #MAXSPR-1                   ;Init the order table with a
-is_orderlist   txa                             ;0,1,2,3,4,5... order
+is_orderlist   txa                              ;0,1,2,3,4,5... order
                 sta sortorder,x
                 dex
                 bpl is_orderlist
                 rts
 
-        ;Raster interrupt 1. This is where sorting happens.
+;Raster interrupt 1. This is where sorting happens.
 
-irq1           dec $d019                       ;Acknowledge raster interrupt
+irq1           dec $d019                        ;Acknowledge raster interrupt
                 lda #$ff                        ;Move all sprites
                 sta $d001                       ;to the bottom to prevent
                 sta $d003                       ;weird effects when sprite
@@ -206,12 +193,12 @@ irq1_beginsort
                 cpx sortedsprites
                 bcc irq1_cleardone
                 lda #$ff                        ;Mark unused sprites with the
-irq1_clearloop sta spry,x                      ;lowest Y-coordinate ($ff);
+irq1_clearloop sta spry,x                       ;lowest Y-coordinate ($ff);
                 dex                             ;these will "fall" to the
                 cpx sortedsprites               ;bottom of the sorted table
                 bcs irq1_clearloop
 irq1_cleardone ldx #$00
-irq1_sortloop  ldy sortorder+1,x               ;Sorting code. Algorithm
+irq1_sortloop  ldy sortorder+1,x                ;Sorting code. Algorithm
                 lda spry,y                      ;ripped from Dragon Breed -)
                 ldy sortorder,x
                 cmp spry,y
@@ -236,7 +223,7 @@ irq1_sortskip  inx
                 lda #$ff                       ;$ff is the endmark for the
                 sta sortspry,x                 ;sprite interrupt routine
                 ldx #$00
-irq1_sortloop3 ldy sortorder,x                ;Final loop
+irq1_sortloop3 ldy sortorder,x                 ;Final loop
                 lda spry,y                     ;Now copy sprite variables to
                 sta sortspry,x                 ;the sorted table
                 lda sprx,y
@@ -250,10 +237,10 @@ irq1_sortloop3 ldy sortorder,x                ;Final loop
                 bcc irq1_sortloop3
                 jmp irq1_nonewsprites
 
-        ;Raster interrupt 2. This is where sprite displaying happens
+;Raster interrupt 2. This is where sprite displaying happens
 
-irq2           dec $d019                       ;Acknowledge raster interrupt
-irq2_direct    ldy sprirqcounter               ;Take next sorted sprite number
+irq2           dec $d019                        ;Acknowledge raster interrupt
+irq2_direct    ldy sprirqcounter                ;Take next sorted sprite number
                 lda sortspry,y                  ;Take Y-coord of first new sprite
                 clc
                 adc #$10                        ;16 lines down from there is
@@ -276,14 +263,14 @@ irq2_spriteloop lda sortspry,y
 irq2_lowmsb    lda $d010
                 and andtbl,x
                 sta $d010
-irq2_msbok     ldx physicalsprtbl1,y           ;Physical sprite number x 1
+irq2_msbok     ldx physicalsprtbl1,y            ;Physical sprite number x 1
                 lda sortsprf,y
                 sta $07f8,x                     ;for color & frame
                 lda sortsprc,y
                 sta $d027,x
                 iny
                 bne irq2_spriteloop
-irq2_endspr    cmp #$ff                        ;Was it the endmark?
+irq2_endspr    cmp #$ff                         ;Was it the endmark?
                 beq irq2_lastspr
                 sty sprirqcounter
                 sec                             ;That coordinate - $10 is the
@@ -292,13 +279,15 @@ irq2_endspr    cmp #$ff                        ;Was it the endmark?
                 bcc irq2_direct                 ;Then go directly to next IRQ
                 sta $d012
                 jmp $ea81
-irq2_lastspr   lda #<irq1                      ;Was the last sprite,
+irq2_lastspr   lda #<irq1                       ;Was the last sprite,
                 sta $0314                       ;go back to irq1
                 lda #>irq1                      ;(sorting interrupt)
                 sta $0315
                 lda #IRQ1LINE
                 sta $d012
                 jmp $ea81
+
+;SPRITE TABLES:
 
 sprx           byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0                 ;Unsorted sprite table
 spry           byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
@@ -310,6 +299,7 @@ sortspry       byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0       
 sortsprc       byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 sortsprf       byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 
+;CONSTANTS
 
 d015tbl        
                 byte  %00000000                  ;Table of sprites that are "on"
