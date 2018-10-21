@@ -1,13 +1,15 @@
 ;==============================================================================
-;Spritemultiplexing example                                              
-;All credit to Lasse Oorni (loorni@student.oulu.fi) for the original code                                                               ;                                                                             
+;C64 Sprite multiplexing example  
+;
+;All credit to Lasse Oorni (loorni@student.oulu.fi) for the original code  
+;                                                                             
 ;This routine can run over 32 sprites (change value of 'MAXSPR', and increase 
-;the number of entries in the 'Sprite' tables to match.
+;the number of entries in the 'Sprite' tables to match).
 ;                                                                                                      
 ;First IRQ 'Sorts' the sprites at the bottom of the screen, the second IRQ
 ;displays them.
 ;
-;Why sorted top-bottom order of sprites is necessary for multiplexing        
+;Why sorted top-bottom order of sprites is necessary for multiplexing,        
 ;because raster interrupts are used to "rewrite" the sprite registers         
 ;in the middle of the screen and raster interrupts follow the                 
 ;top->bottom movement of the TV/monitor electron gun as it draws each         
@@ -19,14 +21,15 @@
 
 
 
-; 10 SYS (4096)
+; SYS Call to $1000:
 
 *=$0801
 
         BYTE    $0E, $08, $0A, $00, $9E, $20, $28,  $34, $30, $39, $36, $29, $00, $00, $00
 
 *=              $0fc0
-;The Sprite DATA:
+;The Sprite DATA (Enter any single colour sprite code here, to apply to ALL generated sprites):
+
                  BYTE 0,0,0
                  BYTE 124,241,1
                  BYTE 253,251,1
@@ -49,7 +52,8 @@
                  BYTE 0,0,0
                  BYTE 0,0,0
 
-*=$1000
+*=$1000                         ;Program start address, first define some constants:
+
 IRQ1LINE        = $fc           ;This is the place on screen where the sorting
                                 ;IRQ happens
 IRQ2LINE        = $2a           ;This is where sprite displaying begins...
@@ -71,7 +75,8 @@ sortorderlast   = $2f           ;as there are sprites.
 
 ;Main program
 
-start           jsr initsprites                 ;Init the multiplexing-system
+start           
+                jsr initsprites                 ;Init the multiplexing-system
                 jsr initraster
                 lda #00
                 sta $d020
@@ -81,26 +86,31 @@ start           jsr initsprites                 ;Init the multiplexing-system
                 stx numsprites
 
                 dex
-initloop        lda $e000,x                     ;Init sprites with some random
+initloop        
+                lda $e000,x                     ;Init sprites with some random
                 sta sprx,x                      ;values from the KERNAL
                 lda $e010,x
                 sta spry,x
                 lda #$3f
                 sta sprf,x
                 txa
-                cmp #$00                        ;Blue is the default background
+                cmp #$00                        ;Black is the default background
                 bne colorok                     ;color, so sprite would look
-                lda #$05                        ;invisible -)
-colorok         sta sprc,x
+                lda #$05                        ;invisible -) - ignore black colour
+colorok         
+                sta sprc,x
                 dex
                 bpl initloop
 
-mainloop        inc sprupdateflag               ;Signal to IRQ sort the
+mainloop        
+                inc sprupdateflag               ;Signal to IRQ sort the
                                                 ;sprites
-waitloop        lda sprupdateflag               ;Wait until the flag turns back
+waitloop        
+                lda sprupdateflag               ;Wait until the flag turns back
                 bne waitloop                    ;to zero
                 ldx #MAXSPR-1
-moveloop        lda $e040,x                     ;Move the sprites with some
+moveloop        
+                lda $e040,x                     ;Move the sprites with some
                 and #$03                        ;random speeds
                 sec
                 adc sprx,x
@@ -116,7 +126,8 @@ moveloop        lda $e040,x                     ;Move the sprites with some
 
 ;Routine to init the raster interrupt system
 
-initraster     sei
+initraster     
+                sei
                 lda #<irq1
                 sta $0314
                 lda #>irq1
@@ -135,11 +146,13 @@ initraster     sei
                 
 ;Routine to init the sprite multiplexing system
 
-initsprites    lda #$00
+initsprites     
+                lda #$00
                 sta sortedsprites
                 sta sprupdateflag
                 ldx #MAXSPR-1                   ;Init the order table with a
-is_orderlist   txa                              ;0,1,2,3,4,5... order
+is_orderlist    
+                txa                             ;0,1,2,3,4,5... order
                 sta sortorder,x
                 dex
                 bpl is_orderlist
@@ -147,7 +160,8 @@ is_orderlist   txa                              ;0,1,2,3,4,5... order
 
 ;Raster interrupt 1. This is where sorting happens.
 
-irq1           dec $d019                        ;Acknowledge raster interrupt
+irq1            
+                dec $d019                       ;Acknowledge raster interrupt
                 lda #$ff                        ;Move all sprites
                 sta $d001                       ;to the bottom to prevent
                 sta $d003                       ;weird effects when sprite
@@ -185,7 +199,7 @@ irq1_notmorethan8
                 sta $0315
                 jmp irq2_direct                 ;Go directly; we might be late
 irq1_nospritesatall
-                jmp $ea81
+                jmp $ea81                       ;Continue IRQs
 
 irq1_beginsort 
                 ldx #MAXSPR
@@ -193,18 +207,22 @@ irq1_beginsort
                 cpx sortedsprites
                 bcc irq1_cleardone
                 lda #$ff                        ;Mark unused sprites with the
-irq1_clearloop sta spry,x                       ;lowest Y-coordinate ($ff);
+irq1_clearloop 
+                sta spry,x                       ;lowest Y-coordinate ($ff);
                 dex                             ;these will "fall" to the
                 cpx sortedsprites               ;bottom of the sorted table
                 bcs irq1_clearloop
-irq1_cleardone ldx #$00
-irq1_sortloop  ldy sortorder+1,x                ;Sorting code. Algorithm
+irq1_cleardone 
+                ldx #$00
+irq1_sortloop  
+                ldy sortorder+1,x                ;Sorting code. Algorithm
                 lda spry,y                      ;ripped from Dragon Breed -)
                 ldy sortorder,x
                 cmp spry,y
                 bcs irq1_sortskip
                 stx irq1_sortreload+1
-irq1_sortswap  lda sortorder+1,x
+irq1_sortswap   
+                lda sortorder+1,x
                 sta sortorder,x
                 sty sortorder+1,x
                 cpx #$00
@@ -215,15 +233,18 @@ irq1_sortswap  lda sortorder+1,x
                 ldy sortorder,x
                 cmp spry,y
                 bcc irq1_sortswap
-irq1_sortreload ldx #$00
-irq1_sortskip  inx
+irq1_sortreload 
+                ldx #$00
+irq1_sortskip   
+                inx
                 cpx #MAXSPR-1
                 bcc irq1_sortloop
                 ldx sortedsprites
                 lda #$ff                       ;$ff is the endmark for the
                 sta sortspry,x                 ;sprite interrupt routine
                 ldx #$00
-irq1_sortloop3 ldy sortorder,x                 ;Final loop
+irq1_sortloop3  
+                ldy sortorder,x                 ;Final loop
                 lda spry,y                     ;Now copy sprite variables to
                 sta sortspry,x                 ;the sorted table
                 lda sprx,y
@@ -239,15 +260,19 @@ irq1_sortloop3 ldy sortorder,x                 ;Final loop
 
 ;Raster interrupt 2. This is where sprite displaying happens
 
-irq2           dec $d019                        ;Acknowledge raster interrupt
-irq2_direct    ldy sprirqcounter                ;Take next sorted sprite number
+irq2            
+                dec $d019                       ;Acknowledge raster interrupt
+irq2_direct     
+                ldy sprirqcounter               ;Take next sorted sprite number
                 lda sortspry,y                  ;Take Y-coord of first new sprite
                 clc
                 adc #$10                        ;16 lines down from there is
                 bcc irq2_notover                ;the endpoint for this IRQ
                 lda #$ff                        ;Endpoint canït be more than $ff
-irq2_notover   sta tempvariable
-irq2_spriteloop lda sortspry,y
+irq2_notover   
+                sta tempvariable
+irq2_spriteloop 
+                lda sortspry,y
                 cmp tempvariable                ;End of this IRQ?
                 bcs irq2_endspr
                 ldx physicalsprtbl2,y           ;Physical sprite number x 2
@@ -260,17 +285,20 @@ irq2_spriteloop lda sortspry,y
                 ora ortbl,x
                 sta $d010
                 jmp irq2_msbok
-irq2_lowmsb    lda $d010
+irq2_lowmsb    
+                lda $d010
                 and andtbl,x
                 sta $d010
-irq2_msbok     ldx physicalsprtbl1,y            ;Physical sprite number x 1
+irq2_msbok     
+                ldx physicalsprtbl1,y            ;Physical sprite number x 1
                 lda sortsprf,y
                 sta $07f8,x                     ;for color & frame
                 lda sortsprc,y
                 sta $d027,x
                 iny
                 bne irq2_spriteloop
-irq2_endspr    cmp #$ff                         ;Was it the endmark?
+irq2_endspr    
+                cmp #$ff                         ;Was it the endmark?
                 beq irq2_lastspr
                 sty sprirqcounter
                 sec                             ;That coordinate - $10 is the
@@ -279,13 +307,14 @@ irq2_endspr    cmp #$ff                         ;Was it the endmark?
                 bcc irq2_direct                 ;Then go directly to next IRQ
                 sta $d012
                 jmp $ea81
-irq2_lastspr   lda #<irq1                       ;Was the last sprite,
+irq2_lastspr   
+                lda #<irq1                       ;Was the last sprite,
                 sta $0314                       ;go back to irq1
                 lda #>irq1                      ;(sorting interrupt)
                 sta $0315
                 lda #IRQ1LINE
                 sta $d012
-                jmp $ea81
+                jmp $ea81                       ;Continue IRQs
 
 ;SPRITE TABLES:
 
